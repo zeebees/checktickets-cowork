@@ -2,13 +2,21 @@
 
 Check ticket availability on **GetYourGuide** and/or **Tiqets** for a specific date, time slot, and party size — and get told whether tickets are currently bookable. Built for timed-entry attractions like the Sagrada Família or the Alhambra, where slots sell out fast.
 
-## Install (recipient)
+> ### ⬇️ Get it in 30 seconds (no coding)
+>
+> **[Download the skill file → ](https://github.com/zeebees/checktickets-cowork/releases/latest)** (grab `checktickets.skill` under **Assets**)
+>
+> Then, in the **Claude desktop app**: open **Cowork → Settings → Capabilities**, click to add a skill, and pick the `checktickets.skill` file you just downloaded. That's it.
+>
+> To use it, just chat — e.g. *"check Sagrada Família tickets on GetYourGuide for Oct 13 2026, 2 adults"* and paste the ticket page link.
 
-1. Save the `checktickets.skill` file to your computer.
+## Install (step by step)
+
+1. **Download** `checktickets.skill` from the [latest release](https://github.com/zeebees/checktickets-cowork/releases/latest) (under **Assets**).
 2. Open the **Claude desktop app** → **Cowork** → **Settings → Capabilities**.
-3. Add the `.skill` file there. It loads automatically whenever you ask about checking tickets.
+3. **Add** the `checktickets.skill` file there. It loads automatically whenever you ask about checking tickets.
 
-You don't need to run any commands — just talk to Cowork.
+You don't need to run any commands or install anything else — just talk to Cowork.
 
 ## Use
 
