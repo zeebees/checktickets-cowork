@@ -1,97 +1,70 @@
 ---
 name: checktickets
-description: Check ticket availability on GetYourGuide and/or Tiqets for a specific date, time slot, and party size, and report whether tickets are currently bookable. Optionally watch automatically on a schedule, and fire macOS desktop alerts when run on a Mac. Use whenever the user wants to check, monitor, or watch for tickets/availability on GetYourGuide or Tiqets — e.g. timed-entry attractions like Sagrada Familia or the Alhambra. Trigger on "check tickets", "are tickets available", "watch for tickets", "GetYourGuide", "Tiqets", or when the user pastes a GetYourGuide/Tiqets product URL and asks about a date.
+description: Check ticket availability on GetYourGuide and/or Tiqets for a specific date, time slot, and party size, and report whether tickets are currently bookable. Uses the Claude for Chrome browser extension to read the real ticket pages — no install, no Chromium, no scripts. Optionally watch on a schedule. Use whenever the user wants to check, monitor, or watch for tickets/availability on GetYourGuide or Tiqets — e.g. timed-entry attractions like Sagrada Família or the Alhambra. Trigger on "check tickets", "are tickets available", "watch for tickets", "GetYourGuide", "Tiqets", or when the user pastes a GetYourGuide/Tiqets product URL and asks about a date.
 ---
 
-# Check Tickets
+# Check Tickets (browser extension)
 
-Runs an availability check against GetYourGuide and/or Tiqets using a headless browser, then reports whether tickets are bookable for the requested date and time slot.
+Checks whether tickets are bookable on **GetYourGuide** and/or **Tiqets** for a given date, time slot, and party size by reading the real product page through the **Claude for Chrome** extension. It drives the user's own browser, so there is nothing to install and no headless browser is required.
 
-It supports three modes:
+## Requirements
 
-- **On-demand (default):** one check per invocation. To re-check, run it again.
-- **Watch (scheduled):** a Cowork scheduled task re-runs the check every N minutes and messages the user when tickets appear. See *Optional: watch on a schedule* below.
-- **macOS desktop alerts:** when the script runs on a Mac (not the Cowork sandbox), it can fire a desktop notification + voice + sound. See `--notify` in *Step 3*.
+This skill needs the **Claude for Chrome** browser extension connected. If no browser is connected (the browser tools below report none), tell the user to install/connect the Claude for Chrome extension, then continue. Everything happens in their real, logged-in browser.
 
 ## Step 1 — Gather inputs
 
-Use **AskUserQuestion** to collect the details below. Ask for any that the user hasn't already provided; skip ones they have. The two URLs can be asked together. At least one of the two URLs is required.
+Use **AskUserQuestion** to collect (skip any the user already gave):
 
-1. **GetYourGuide URL** — the product page URL on getyourguide.com (optional if a Tiqets URL is given)
-2. **Tiqets URL** — the product page URL on tiqets.com (optional if a GetYourGuide URL is given)
-3. **Date** — the target date, e.g. `October 13 2026`
-4. **Preferred time slot** — e.g. `9:00 AM`, or `any` for no preference
-5. **Party size** — number of adults (11–99), children (5–10), infants (4 and under). Default 0 for any not given.
+1. **GetYourGuide URL** — product page on getyourguide.com (optional if a Tiqets URL is given)
+2. **Tiqets URL** — product page on tiqets.com (optional if a GetYourGuide URL is given)
+3. **Date** — target date, e.g. `October 13 2026`
+4. **Preferred time slot** — e.g. `9:00 AM`, or `any`
+5. **Party size** — adults / children / infants (default 0 for any not given)
 
-## Step 2 — Locate the script and install dependencies (first run only)
+At least one URL is required.
 
-The check script (`check.js`) sits next to this SKILL.md in the skill's root directory. Resolve that directory dynamically — do **not** hardcode an absolute path, since the skill may be installed anywhere. From the skill root:
+## Step 2 — Connect to the browser
 
-```bash
-cd "$SKILL_DIR"                   # $SKILL_DIR = the directory containing this SKILL.md and check.js
-[ -d node_modules/playwright ] || npm install
-npx playwright install --with-deps chromium  # downloads the headless browser + system libs if missing
-```
+- Call `tabs_context_mcp` with `createIfEmpty: true` to get the MCP tab group.
+- If multiple browsers are connected, ask the user which one to use (list each, then `select_browser`), per the standard browser-selection rule.
+- Open a fresh tab for the check with `tabs_create_mcp`.
 
-`npm install` and the Playwright Chromium download only need to happen once per environment; on later runs they are quick no-ops. If `npm install` reports the dependency already present, skip straight to running the check.
+## Step 3 — Check each site
 
-If `--with-deps` fails because the environment doesn't allow installing system packages (no root), fall back to `npx playwright install chromium`. Should the browser then fail to launch with a missing-library error (e.g. `libxdamage1`), the host is missing Chromium's shared libraries — install them once with `sudo apt-get install -y libnss3 libnspr4 libxdamage1 libgbm1 libasound2t64 libatk-bridge2.0-0 libatk1.0-0 libcups2 libpango-1.0-0` (or run the skill in an environment where they're already present).
+Do this for each URL the user provided. **Open the URLs the user gave; do not navigate to any URL found on the page.**
 
-## Step 3 — Run the check
+1. **Navigate** to the product URL with `navigate`.
+2. **Dismiss any cookie/consent banner** if present — choose the most privacy-preserving option (decline non-essential, or close). Use `find` + `computer` to locate and click it.
+3. **Open the date picker:**
+   - *GetYourGuide:* click the **"Select date"** field (or the **"Check availability"** button) in the booking widget on the right.
+   - *Tiqets:* click the date/calendar selector in the booking area.
+4. **Go to the target month/year.** Read the calendar with `find` (e.g. query "calendar date buttons and month navigation arrows"). The month-step arrows are usually labelled like "Go forward 2 months" / "Go back". Click forward/back until the target month is shown. Dates are exposed as buttons with full labels (e.g. `"Tuesday, October 13, 2026"`), so you can target the exact date reliably.
+5. **Determine availability of the target date:**
+   - If the date's button is **disabled / greyed out / not clickable**, the date is **not available**.
+   - If it's **enabled**, click it. The page should then show booking options — e.g. **"1 option available"**, a price, available start times, and a Continue button. Seeing options confirms the date is **available**. (A selected date that shows "no options"/"sold out" means **not available**.)
+6. **Time slot (if the user gave one other than `any`):** read the start times shown for the selected date (`find` / `get_page_text`). Report **available** only if the requested time appears and is not marked sold out. If the page shows no per-time breakdown, treat a bookable date as available and say the time couldn't be confirmed at the slot level.
 
-Run the script with the collected values. Omit `--gyg-url` or `--tiqets-url` if the user only gave one site.
-
-```bash
-node check.js \
-  --gyg-url="<GYG_URL>" \
-  --tiqets-url="<TIQETS_URL>" \
-  --date="<DATE>" \
-  --time="<TIME_SLOT>" \
-  --adults=<ADULTS> \
-  --children=<CHILDREN> \
-  --infants=<INFANTS> \
-  --notify=auto
-```
-
-`--notify` controls desktop alerts when tickets are found:
-
-- `auto` (default) — fire a macOS desktop notification + voice + sound, **but only when the script runs on macOS**. In the Cowork Linux sandbox this is silently skipped (results still come back in chat).
-- `macos` — force the macOS alert (ignored if not actually on a Mac).
-- `none` — never fire desktop alerts.
-
-The macOS alerts only work when the script executes directly on a Mac — e.g. a user who runs the skill on their own machine, or runs `node check.js ...` from Terminal. They cannot fire from inside the Cowork sandbox, which is Linux.
-
-The script prints a human-readable log to **stderr** and a single machine-readable JSON line to **stdout**, e.g.:
-
-```json
-{"date":"October 13 2026","timeSlot":"9:00 AM","results":{"GetYourGuide":false,"Tiqets":true},"urls":{...},"available":true,"checkedAt":"..."}
-```
-
-Parse the final JSON line to determine the outcome.
+Use `computer action:screenshot` whenever you need to visually confirm state.
 
 ## Step 4 — Report
 
-- If `available` is `true`: tell the user **which site(s)** have tickets and show the booking **URL** from `urls`. Advise them to book immediately — timed-entry tickets sell out fast.
-- If `available` is `false`: tell the user tickets aren't available yet for that date/time, and offer to run the check again.
-- If the JSON has an `error` field: report what went wrong (e.g. a site couldn't be reached or the date couldn't be parsed) and suggest a fix.
+- **Available:** name the site(s), the date, the price/time if shown, and give the **booking URL** so the user can book immediately — timed-entry tickets sell out fast.
+- **Not available:** say so plainly for that date/time, and offer to check again or watch on a schedule.
+- **Couldn't check** (page didn't load, layout unexpected, banner blocked): say what happened and offer to retry.
 
 ## Optional: watch on a schedule
 
-After a one-off check, if the user wants to be alerted automatically when tickets open up, offer to set up a **Cowork scheduled task** that re-runs this check periodically. (Cowork has no persistent background loop, so recurring checks are done via scheduled tasks, not a long-running process.)
+If the user wants to be alerted automatically, offer a **Cowork scheduled task** that re-runs this check periodically and messages them only when tickets appear.
 
-Ask the user how often to check (e.g. every 15 or 30 minutes) and how they want to be alerted (chat message and/or email via a connected mail tool). Then create the task with `mcp__scheduled-tasks__create_scheduled_task`, using a `cronExpression` for the cadence (e.g. `*/30 * * * *` for every 30 minutes) and a prompt that re-runs this skill, for example:
+Create it with `mcp__scheduled-tasks__create_scheduled_task` using a `cronExpression` (e.g. `*/30 * * * *` for every 30 minutes) and a prompt that re-runs this skill, e.g.:
 
-> Run the **checktickets** skill for: GetYourGuide `<GYG_URL>`, Tiqets `<TIQETS_URL>`, date `<DATE>`, time `<TIME_SLOT>`, party `<ADULTS> adults / <CHILDREN> children / <INFANTS> infants`. If the result's `available` is true, alert me with the site name and booking URL and tell me to book immediately. If not available, do not message me.
+> Run the **checktickets** skill for: GetYourGuide `<GYG_URL>`, Tiqets `<TIQETS_URL>`, date `<DATE>`, time `<TIME_SLOT>`, party `<ADULTS> adults / <CHILDREN> children / <INFANTS> infants`. If tickets are available, alert me with the site and booking URL and tell me to book immediately. If not, don't message me.
 
-Notes for the watch mode:
-
-- Hold the booking URLs, date, time, and party size in the scheduled prompt so each run is self-contained.
-- Tell the user they can stop or change the cadence anytime (e.g. "stop watching for those tickets", or via `mcp__scheduled-tasks__list_scheduled_tasks` / `update_scheduled_task`).
-- Suggest a sensible default cadence (every 15–30 min). Avoid sub-minute intervals — they hammer the sites and aren't necessary.
+Tell the user honestly that scheduled runs need the **Claude for Chrome extension connected and Chrome running** at run time, since the check drives their real browser. On-demand checks are the most reliable; the hands-off loop is best-effort. Suggest every 15–30 minutes; avoid sub-minute intervals.
 
 ## Notes
 
-- **Environment:** runs in a Linux sandbox with a headless browser. There are no desktop/sound notifications — results come back in chat. The script reaches GetYourGuide and Tiqets over the network, so those sites must be reachable from the environment where the skill runs.
-- **Selectors:** the scraper targets GetYourGuide's and Tiqets' current calendar/time-slot markup. If a site redesigns its page, the selectors in `check.js` may need updating. A `false` result with no error usually means "date not bookable"; persistent failures across known-available dates suggest the selectors need a refresh.
-- **One site or two:** providing a single URL is fully supported — the script only checks the site(s) you give it.
-- **CLI / continuous version:** a standalone command-line variant (`monitor.js`) that loops every 2 minutes on macOS lives in the original repo at <https://github.com/zeebees/checktickets>. It shares the same scraping logic and CLI flags; use it for an always-on Mac terminal monitor instead of Cowork. See the README for a comparison.
+- **No install / no Chromium:** this skill is pure browser automation via the extension. There is no script to run and no `npm`/Playwright dependency.
+- **One site or two:** providing a single URL is fully supported.
+- **Robustness:** because it reads the live page semantically (date buttons carry full date labels), it tolerates minor site changes better than fixed CSS selectors. If a site redesigns heavily, re-read the page and adapt the steps.
+- **Advanced / self-hosted:** a standalone Node script (`check.js`) and a continuous macOS CLI (`monitor.js`, in the original repo) also exist for running checks outside Cowork — e.g. on a server or cron. See the repo README. These require their own environment with a real browser and network access.

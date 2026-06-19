@@ -2,19 +2,22 @@
 
 Check ticket availability on **GetYourGuide** and/or **Tiqets** for a specific date, time slot, and party size — and get told whether tickets are currently bookable. Built for timed-entry attractions like the Sagrada Família or the Alhambra, where slots sell out fast.
 
+**No Chromium, no scripts, nothing to install.** The skill reads the real ticket pages through the **Claude for Chrome** browser extension — it drives your own browser, so it just works.
+
 > ### ⬇️ Get it in 30 seconds (no coding)
 >
-> **[Download the skill file → ](https://github.com/zeebees/checktickets-cowork/releases/latest)** (grab `checktickets.skill` under **Assets**)
+> 1. **[Download the skill file → ](https://github.com/zeebees/checktickets-cowork/releases/latest)** (grab `checktickets.skill` under **Assets**)
+> 2. In the **Claude desktop app**: open **Cowork → Settings → Capabilities** and add the `checktickets.skill` file.
+> 3. Make sure the **[Claude for Chrome](https://www.anthropic.com/claude/chrome) extension** is installed and connected.
 >
-> Then, in the **Claude desktop app**: open **Cowork → Settings → Capabilities**, click to add a skill, and pick the `checktickets.skill` file you just downloaded. That's it.
->
-> To use it, just chat — e.g. *"check Sagrada Família tickets on GetYourGuide for Oct 13 2026, 2 adults"* and paste the ticket page link.
+> Then just chat — e.g. *"check Sagrada Família tickets on GetYourGuide for Oct 13 2026, 2 adults"* and paste the ticket page link. A tab opens in your browser, Claude reads the calendar, and tells you if it's bookable.
 
 ## Install (step by step)
 
 1. **Download** `checktickets.skill` from the [latest release](https://github.com/zeebees/checktickets-cowork/releases/latest) (under **Assets**).
 2. Open the **Claude desktop app** → **Cowork** → **Settings → Capabilities**.
 3. **Add** the `checktickets.skill` file there. It loads automatically whenever you ask about checking tickets.
+4. Install/connect the **[Claude for Chrome](https://www.anthropic.com/claude/chrome) extension** — that's how the skill reads the ticket pages.
 
 You don't need to run any commands or install anything else — just talk to Cowork.
 
@@ -56,12 +59,18 @@ Tips:
 ## What you need
 
 - The **Claude desktop app** with Cowork.
+- The **Claude for Chrome** browser extension, connected.
 - At least one **GetYourGuide or Tiqets product-page URL**.
-- Network access to those sites from wherever the skill runs.
+
+That's it — no Node, no Playwright, no Chromium, no terminal.
 
 ## How it works (under the hood)
 
-`check.js` drives a headless Chromium browser (via Playwright) to open each site's date picker, look for your target date, and — if you gave a time preference — check the time-slot UI. It prints a machine-readable JSON result that Cowork reads to report back. First run installs dependencies automatically:
+The skill is a set of instructions that drive the **Claude for Chrome** extension. When you ask, Claude opens a tab in your own browser, goes to the ticket page, dismisses the cookie banner, opens the date picker, steps to your month, and reads the calendar. Each date is exposed as a labelled button (e.g. `"Tuesday, October 13, 2026"`), so Claude can target the exact date and tell whether it's selectable. Selecting an available date reveals the booking options/price/times, which Claude reads back to you. Because it reads the live page in your real, logged-in browser, there's no headless browser to install and no bot-detection headaches.
+
+## Advanced: self-hosted / cron (optional)
+
+For running checks **outside Cowork** — e.g. on a server or a schedule that doesn't depend on your browser being open — the repo also includes a standalone Node script, `check.js`, that uses Playwright:
 
 ```bash
 npm install
@@ -69,11 +78,11 @@ npx playwright install --with-deps chromium
 node check.js --gyg-url="..." --tiqets-url="..." --date="October 13 2026" --time="9:00 AM" --adults=2 --notify=auto
 ```
 
-`--notify`: `auto` (macOS alert only when on a Mac, default), `macos` (force), `none` (off).
+This needs its own environment with a real browser and network access to the ticket sites (it will **not** run inside Cowork's sandbox). `--notify`: `auto` (macOS alert only on a Mac, default), `macos` (force), `none` (off).
 
 ## CLI / continuous-monitor version
 
-This skill is the **single-shot, Cowork-friendly** adaptation. The original project also ships a **command-line / continuous-monitor** version (`monitor.js`) that loops on its own every 2 minutes and is meant to run on a Mac — see the original repo: <https://github.com/zeebees/checktickets>.
+The original project also ships a **command-line / continuous-monitor** version (`monitor.js`) that loops on its own every 2 minutes and is meant to run on a Mac — see the original repo: <https://github.com/zeebees/checktickets>.
 
 That CLI version can be used standalone, without Cowork:
 
@@ -90,22 +99,23 @@ node monitor.js \
   --adults=2 --children=1 --infants=0
 ```
 
-The two share the same scraping logic and CLI flags. The differences:
+### Which one should I use?
 
-| | CLI `monitor.js` (original) | Skill `check.js` (this repo) |
-|---|---|---|
-| Runs | Loops every 2 min until stopped | One check per call |
-| Alerts | macOS notification + voice + sound | JSON result + optional macOS alert via `--notify` |
-| Recurring | Built-in loop | Cowork scheduled task |
-| Best for | Running in a Mac terminal | Running inside Cowork |
+| | Cowork skill (this repo) | Self-host `check.js` | CLI `monitor.js` (original) |
+|---|---|---|---|
+| Where it runs | Your browser, via Claude for Chrome | A server / your machine (Playwright) | A Mac terminal |
+| Install needed | Just the Chrome extension | Node + Playwright + Chromium | Node + Playwright + Chromium |
+| Recurring | Cowork scheduled task | Your own cron | Built-in 2-min loop |
+| Alerts | Cowork chat (+ Mac pop-up) | JSON / optional Mac alert | macOS notification + voice |
+| Best for | Most people — no setup | Always-on, browser-independent watching | Developers on a Mac |
 
-If you want the always-on Mac terminal experience, use the CLI version from the original repo. If you want it inside Cowork (with scheduled re-checks and chat alerts), use this skill.
+Most people should use the **Cowork skill**. Reach for the self-host script or CLI only if you want unattended watching that doesn't depend on your browser being open.
 
 ## Notes & limitations
 
-- The scraper targets each site's **current** calendar/time-slot markup. If a site redesigns its page, the selectors in `check.js` may need updating.
-- A `false` result with no error means "date not bookable." Persistent failures on a known-available date usually mean the selectors need a refresh.
-- Headless Chromium needs system libraries present in the run environment (`npx playwright install --with-deps chromium` handles this where you have permission to install packages).
+- The skill reads each site's **live** calendar in your browser, so it adapts to minor changes better than fixed CSS selectors. If a site redesigns heavily, the step-by-step instructions in `SKILL.md` may need a tweak.
+- "Not available" means the date wasn't selectable or showed no booking options when checked.
+- **Scheduled watching** drives your real browser, so it needs Chrome running and the extension connected when each check fires. On-demand checks are the most reliable.
 
 ## Credits
 
