@@ -30,8 +30,28 @@ The skill asks for anything missing (URLs, date, time slot, party size), runs on
 ### Modes
 
 - **On-demand (default):** one check each time you ask.
-- **Watch on a schedule:** say *"watch these and tell me when they open up"* and it sets up a recurring check (default every 15–30 min) that messages you only when tickets appear.
+- **Watch on a loop:** have Cowork re-check automatically on a schedule and ping you when tickets appear. See below.
 - **macOS desktop alert:** when run on a Mac, it can pop a desktop notification + voice + sound. On non-Mac environments, results just come back in chat.
+
+## Watch on a loop (recurring checks)
+
+You don't have to keep asking. Cowork can re-run the check on a schedule and only message you when tickets actually open up — no coding, all in chat.
+
+1. After a normal check, just say something like:
+
+   > Watch these every 30 minutes and tell me the moment tickets open up.
+
+2. Cowork sets up a **scheduled task** that re-runs the check on that cadence, holding your URLs, date, time, and party size.
+3. Each run, it only messages you **if tickets are available** — with the site and booking link so you can grab them fast. If nothing's available, it stays quiet.
+
+Tips:
+
+- **Pick a sensible frequency.** Every 15–30 minutes is plenty. Checking every minute just hammers the ticket sites and isn't more useful.
+- **Change or stop it anytime** by asking in chat, e.g. *"check every 15 minutes instead"* or *"stop watching those tickets."*
+- **Where alerts show up:** in your Cowork chat. (On a Mac you can also get the desktop pop-up — see the macOS alert mode above.)
+- The scheduled task runs on its own once set up; you don't need to keep the conversation open.
+
+> Prefer an always-on loop in a terminal instead? See the [CLI / continuous-monitor version](#cli--continuous-monitor-version) below.
 
 ## What you need
 
