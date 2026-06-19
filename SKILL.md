@@ -39,12 +39,13 @@ Do this for each URL the user provided. **Open the URLs the user gave; do not na
    - *GetYourGuide:* click the **"Select date"** field (or the **"Check availability"** button) in the booking widget on the right.
    - *Tiqets:* click the date/calendar selector in the booking area.
 4. **Go to the target month/year.** Read the calendar with `find` (e.g. query "calendar date buttons and month navigation arrows"). The month-step arrows are usually labelled like "Go forward 2 months" / "Go back". Click forward/back until the target month is shown. Dates are exposed as buttons with full labels (e.g. `"Tuesday, October 13, 2026"`), so you can target the exact date reliably.
-5. **Determine availability of the target date:**
-   - If the date's button is **disabled / greyed out / not clickable**, the date is **not available**.
-   - If it's **enabled**, click it. The page should then show booking options — e.g. **"1 option available"**, a price, available start times, and a Continue button. Seeing options confirms the date is **available**. (A selected date that shows "no options"/"sold out" means **not available**.)
-6. **Time slot (if the user gave one other than `any`):** read the start times shown for the selected date (`find` / `get_page_text`). Report **available** only if the requested time appears and is not marked sold out. If the page shows no per-time breakdown, treat a bookable date as available and say the time couldn't be confirmed at the slot level.
+5. **Determine availability of the target date.** Read the actual calendar cell — the cue differs by site:
+   - *GetYourGuide:* a **disabled / greyed-out** date is **not available**. An **enabled** date is selectable — click it and the page shows booking options (e.g. **"1 option available"**, a price, start times, a Continue button). Seeing options = **available**; "no options"/"sold out" = **not available**.
+   - *Tiqets:* the calendar shows a **price** under each available date (e.g. `$38.60`) and a **dash "–"** under each unavailable date. **Price = available; dash = not available.** (Confirm by selecting the date if you want the exact price/time.)
+   - **Important — verify the cell's real content.** Do **not** trust the `find` tool's natural-language summary of a date cell; it can guess a price that isn't there. Confirm the actual text with `get_page_text` / `read_page`, or take a `screenshot` / `zoom` of the calendar and read it visually, before deciding available vs not.
+6. **Time slot (if the user gave one other than `any`):** read the start times shown for the selected date (`get_page_text`, or a `screenshot`). Report **available** only if the requested time appears and is not marked sold out. If the page shows no per-time breakdown, treat a bookable date as available and say the time couldn't be confirmed at the slot level.
 
-Use `computer action:screenshot` whenever you need to visually confirm state.
+Use `computer action:screenshot` (or `zoom`) to visually confirm state whenever the DOM is ambiguous — this is the most reliable check.
 
 ## Step 4 — Report
 
@@ -52,15 +53,37 @@ Use `computer action:screenshot` whenever you need to visually confirm state.
 - **Not available:** say so plainly for that date/time, and offer to check again or watch on a schedule.
 - **Couldn't check** (page didn't load, layout unexpected, banner blocked): say what happened and offer to retry.
 
-## Optional: watch on a schedule
+## How often to check (one-time vs. a loop)
 
-If the user wants to be alerted automatically, offer a **Cowork scheduled task** that re-runs this check periodically and messages them only when tickets appear.
+There is **no built-in loop** — Cowork can't run a persistent background process. A "loop" is a **Cowork scheduled task** that re-runs this check on an interval you choose.
 
-Create it with `mcp__scheduled-tasks__create_scheduled_task` using a `cronExpression` (e.g. `*/30 * * * *` for every 30 minutes) and a prompt that re-runs this skill, e.g.:
+After (or instead of) a single check, **ask the user how often to check** using **AskUserQuestion**, offering at least:
 
-> Run the **checktickets** skill for: GetYourGuide `<GYG_URL>`, Tiqets `<TIQETS_URL>`, date `<DATE>`, time `<TIME_SLOT>`, party `<ADULTS> adults / <CHILDREN> children / <INFANTS> infants`. If tickets are available, alert me with the site and booking URL and tell me to book immediately. If not, don't message me.
+- **One time only** — just run the check now, no schedule.
+- **Every 5 minutes**
+- **Every 15 minutes**
+- **Every 30 minutes**
+- **Every hour**
+- **Custom** — let the user name any interval.
 
-Tell the user honestly that scheduled runs need the **Claude for Chrome extension connected and Chrome running** at run time, since the check drives their real browser. On-demand checks are the most reliable; the hands-off loop is best-effort. Suggest every 15–30 minutes; avoid sub-minute intervals.
+Map the choice to a `cronExpression`:
+
+| Choice | cronExpression |
+|---|---|
+| Every 5 minutes | `*/5 * * * *` |
+| Every 15 minutes | `*/15 * * * *` |
+| Every 30 minutes | `*/30 * * * *` |
+| Every hour | `0 * * * *` |
+| Custom | build the cron for the stated interval |
+
+- **One time only:** just run Step 3 now; do **not** create a scheduled task.
+- **Any recurring choice:** create the task with `mcp__scheduled-tasks__create_scheduled_task`, passing the chosen `cronExpression` and a self-contained prompt, e.g.:
+
+  > Run the **checktickets** skill for: GetYourGuide `<GYG_URL>`, Tiqets `<TIQETS_URL>`, date `<DATE>`, time `<TIME_SLOT>`, party `<ADULTS> adults / <CHILDREN> children / <INFANTS> infants`. If tickets are available, alert me with the site and booking URL and tell me to book immediately. If not, don't message me.
+
+Tell the user they can change the interval or stop anytime (e.g. "check every 5 minutes instead", "stop watching"), via `mcp__scheduled-tasks__list_scheduled_tasks` / `update_scheduled_task`.
+
+Be honest about two things: scheduled runs need the **Claude for Chrome extension connected and Chrome running** when each check fires (it drives the real browser), so on-demand checks are the most reliable and the hands-off loop is best-effort; and very short intervals (e.g. every 5 minutes) check the sites more aggressively than usually necessary — fine if the user wants it, but 15–30 minutes is plenty for most cases.
 
 ## Notes
 

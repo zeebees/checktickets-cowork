@@ -38,21 +38,21 @@ The skill asks for anything missing (URLs, date, time slot, party size), runs on
 
 ## Watch on a loop (recurring checks)
 
-You don't have to keep asking. Cowork can re-run the check on a schedule and only message you when tickets actually open up — no coding, all in chat.
+There's **no built-in loop** — Cowork can't run something in the background forever. Instead it sets up a **scheduled task** that re-runs the check on an interval **you choose**, and only messages you when tickets actually open up — no coding, all in chat.
 
 1. After a normal check, just say something like:
 
-   > Watch these every 30 minutes and tell me the moment tickets open up.
+   > Watch these every 5 minutes and tell me the moment tickets open up.
 
-2. Cowork sets up a **scheduled task** that re-runs the check on that cadence, holding your URLs, date, time, and party size.
-3. Each run, it only messages you **if tickets are available** — with the site and booking link so you can grab them fast. If nothing's available, it stays quiet.
+2. Claude asks how often you want to check — **one time only, every 5 minutes, every 15, every 30, every hour, or a custom interval** — and sets up the scheduled task on that cadence, holding your URLs, date, time, and party size.
+3. Each run, it only messages you **if tickets are available** — with the site and booking link. If nothing's available, it stays quiet.
 
 Tips:
 
-- **Pick a sensible frequency.** Every 15–30 minutes is plenty. Checking every minute just hammers the ticket sites and isn't more useful.
-- **Change or stop it anytime** by asking in chat, e.g. *"check every 15 minutes instead"* or *"stop watching those tickets."*
+- **You pick the frequency** — down to every 5 minutes if you want. (15–30 minutes is plenty for most cases; very short intervals just check the sites more aggressively.)
+- **Change or stop it anytime** by asking in chat, e.g. *"check every 5 minutes instead"* or *"stop watching those tickets."*
 - **Where alerts show up:** in your Cowork chat. (On a Mac you can also get the desktop pop-up — see the macOS alert mode above.)
-- The scheduled task runs on its own once set up; you don't need to keep the conversation open.
+- The scheduled task runs on its own once set up, but because the check drives your real browser, **Chrome needs to be open with the extension connected** when each check fires.
 
 > Prefer an always-on loop in a terminal instead? See the [CLI / continuous-monitor version](#cli--continuous-monitor-version) below.
 
