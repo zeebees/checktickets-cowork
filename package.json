@@ -1,0 +1,13 @@
+{
+  "name": "checktickets-skill",
+  "version": "1.0.0",
+  "description": "Single-shot ticket availability check for GetYourGuide and Tiqets",
+  "private": true,
+  "main": "check.js",
+  "scripts": {
+    "check": "node check.js"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}
