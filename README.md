@@ -1,5 +1,7 @@
 # checktickets — Cowork skill
 
+![Sagrada Família and the Alhambra](banner.jpg)
+
 Check ticket availability on **GetYourGuide** and/or **Tiqets** for a specific date, time slot, and party size — and get told whether tickets are currently bookable. Built for timed-entry attractions like the Sagrada Família or the Alhambra, where slots sell out fast.
 
 **No Chromium, no scripts, nothing to install.** The skill reads the real ticket pages through the **Claude for Chrome** browser extension — it drives your own browser, so it just works.
